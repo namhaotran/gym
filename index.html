@@ -539,15 +539,34 @@
     display: inline-block;
     background: #1f1f1f;
     border: 1px solid #2a2a2a;
-    padding: 4px 8px;
+    padding: 4px 8px 4px 20px;
     border-radius: 6px;
     font-size: 11px;
     margin: 2px;
     color: #ccc;
+    cursor: move;
+    position: relative;
+    user-select: none;
+    transition: all 0.2s;
+  }
+  .schedule-ex-chip::before {
+    content: '⋮⋮';
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #666;
+    font-size: 10px;
+    letter-spacing: -2px;
+  }
+  .schedule-ex-chip.dragging {
+    opacity: 0.5;
+    background: #ff4d4d44;
+    transform: scale(1.05);
   }
   .schedule-ex-chip .remove {
     color: #666;
-    margin-left: 4px;
+    margin-left: 6px;
     cursor: pointer;
   }
   .schedule-ex-chip .remove:hover { color: #ff4d4d; }
@@ -705,14 +724,13 @@
   // FIREBASE CONFIG - BẠN CẦN THAY THẾ BẰNG CONFIG CỦA PROJECT
   // Hướng dẫn lấy config ở file README.md
   const firebaseConfig = {
-  apiKey: "AIzaSyBkjT8y9s_9ieNvXtwQWEYFMGlE-aF87IM",
-  authDomain: "gym-tracker-haonam.firebaseapp.com",
-  projectId: "gym-tracker-haonam",
-  storageBucket: "gym-tracker-haonam.firebasestorage.app",
-  messagingSenderId: "1083266079244",
-  appId: "1:1083266079244:web:334cbffb8e87da24916c29",
-  measurementId: "G-EDR8SV8FQN"
-};
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
 
   // Import Firebase
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
@@ -1046,6 +1064,50 @@
       await saveToFirestore();
       renderSchedule();
     }
+  };
+
+  // Drag & drop handlers for schedule
+  let draggedElement = null;
+  let draggedDayIdx = null;
+  let draggedExIdx = null;
+
+  window.handleDragStart = (e) => {
+    draggedElement = e.target;
+    draggedDayIdx = parseInt(e.target.dataset.dayIdx);
+    draggedExIdx = parseInt(e.target.dataset.exIdx);
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  window.handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+  };
+
+  window.handleDrop = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const targetDayIdx = parseInt(e.target.dataset.dayIdx || e.target.closest('.schedule-ex-chip')?.dataset.dayIdx);
+    const targetExIdx = parseInt(e.target.dataset.exIdx || e.target.closest('.schedule-ex-chip')?.dataset.exIdx);
+    
+    if (targetDayIdx === undefined || targetExIdx === undefined) return;
+    if (draggedDayIdx !== targetDayIdx) return; // Only reorder within same day
+    if (draggedExIdx === targetExIdx) return;
+    
+    // Reorder array
+    const day = state.schedule[draggedDayIdx];
+    const [movedId] = day.exerciseIds.splice(draggedExIdx, 1);
+    day.exerciseIds.splice(targetExIdx, 0, movedId);
+    
+    await saveToFirestore();
+    renderSchedule();
+  };
+
+  window.handleDragEnd = (e) => {
+    e.target.classList.remove('dragging');
+    draggedElement = null;
   };
 
   window.removeExFromDay = async (idx, exId) => {
@@ -1404,10 +1466,19 @@
     const list = document.getElementById('schedule-list');
     list.innerHTML = state.schedule.map((day, idx) => {
       const isRest = !day.name.trim() && day.exerciseIds.length === 0;
-      const exChips = day.exerciseIds.map(eid => {
+      const exChips = day.exerciseIds.map((eid, exIndex) => {
         const ex = getExerciseById(eid);
         if (!ex) return '';
-        return `<span class="schedule-ex-chip">${escapeHtml(ex.name)}<span class="remove" onclick="removeExFromDay(${idx}, '${eid}')">✕</span></span>`;
+        return `<span class="schedule-ex-chip" 
+          draggable="true" 
+          data-day-idx="${idx}" 
+          data-ex-idx="${exIndex}"
+          data-ex-id="${eid}"
+          ondragstart="handleDragStart(event)"
+          ondragover="handleDragOver(event)"
+          ondrop="handleDrop(event)"
+          ondragend="handleDragEnd(event)"
+        >${escapeHtml(ex.name)}<span class="remove" onclick="event.stopPropagation(); removeExFromDay(${idx}, '${eid}')">✕</span></span>`;
       }).join('');
 
       const availableEx = state.exercises.filter(ex => !day.exerciseIds.includes(ex.id));
