@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>Gym Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💪</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a0a;
+    color: #f0f0f0;
+    min-height: 100vh;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input { -webkit-user-select: text; user-select: text; }
+  
+  /* Auth Screen */
+  #auth-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  #auth-screen.hidden { display: none; }
+  
+  .auth-logo {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+  .auth-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ff4d4d;
+    margin-bottom: 8px;
+  }
+  .auth-subtitle {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 32px;
+  }
+  
+  .auth-card {
+    background: #1a1a1a;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 400px;
+    border: 1px solid #2a2a2a;
+  }
+  
+  .auth-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: #0a0a0a;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    color: #888;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .auth-tab.active { background: #ff4d4d; color: white; }
+  
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%;
+    padding: 12px;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #f0f0f0;
+    font-size: 14px;
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: #ff4d4d;
+  }
+  
+  .btn {
+    padding: 12px 16px;
+    background: #ff4d4d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    width: 100%;
+    transition: all 0.2s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { background: #333; margin-top: 8px; }
+  
+  .divider {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    color: #666;
+    font-size: 12px;
+  }
+  .divider::before,
+  .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #333;
+  }
+  .divider::before { margin-right: 12px; }
+  .divider::after { margin-left: 12px; }
+  
+  .error-msg {
+    background: #ff4d4d22;
+    border: 1px solid #ff4d4d44;
+    color: #ff8080;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+  
+  /* Loading Screen */
+  #loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  #loading-screen.hidden { display: none; }
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top-color: #ff4d4d;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .loading-text {
+    margin-top: 16px;
+    color: #888;
+    font-size: 14px;
+  }
+  
+  /* Main App */
+  #app-screen {
+    display: none;
+    padding-bottom: 80px;
+  }
+  #app-screen.active { display: block; }
+  
+  .container { max-width: 700px; margin: 0 auto; padding: 16px; }
+  header {
+    background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+    padding: 20px 16px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    border-bottom: 2px solid #ff4d4d;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header-left { flex: 1; }
+  h1 { font-size: 24px; color: #ff4d4d; }
+  .subtitle { font-size: 13px; color: #888; margin-top: 4px; }
+  .user-badge {
+    background: #2a2a2a;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: #aaa;
+    cursor: pointer;
+  }
+  
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: #1a1a1a;
+    padding: 4px;
+    border-radius: 10px;
+    overflow-x: auto;
+  }
+  .tab {
+    flex: 1;
+    min-width: fit-content;
+    padding: 10px 8px;
+    background: transparent;
+    color: #888;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab.active { background: #ff4d4d; color: white; }
+  
+  .card {
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid #2a2a2a;
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: #ff4d4d;
+  }
+  
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #f0f0f0;
+    margin-bottom: 8px;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #ff4d4d;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: #aaa;
+    margin-bottom: 4px;
+    margin-top: 8px;
+  }
+  
+  .btn-small { padding: 6px 10px; font-size: 12px; }
+  .btn-full { width: 100%; }
+  .btn-danger { background: #444; }
+  
+  .exercise-item {
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .exercise-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .exercise-name { font-weight: 600; font-size: 15px; }
+  .muscle-tag {
+    display: inline-block;
+    background: #2a2a2a;
+    color: #ff8080;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  
+  .set-row {
+    display: grid;
+    grid-template-columns: 30px 1fr 1fr 40px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .set-num {
+    background: #2a2a2a;
+    border-radius: 6px;
+    padding: 8px 0;
+    text-align: center;
+    font-weight: 600;
+    color: #ff4d4d;
+    font-size: 13px;
+  }
+  .set-row input {
+    margin-bottom: 0;
+    text-align: center;
+    padding: 8px;
+  }
+  .remove-set {
+    background: transparent;
+    color: #666;
+    border: none;
+    cursor: pointer;
+    font-size: 22px;
+    padding: 0;
+  }
+  
+  .timer-box {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff4d4d;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 30px;
+    box-shadow: 0 4px 20px rgba(255,77,77,0.4);
+    display: none;
+    align-items: center;
+    gap: 12px;
+    z-index: 100;
+  }
+  .timer-box.active { display: flex; }
+  .timer-display {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .timer-btn {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  
+  .timer-quick {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .timer-quick button {
+    padding: 6px 12px;
+    background: #2a2a2a;
+    color: #f0f0f0;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .history-item {
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .history-date {
+    font-weight: 600;
+    color: #ff4d4d;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+  .history-ex {
+    font-size: 13px;
+    color: #ccc;
+    padding: 4px 0;
+    border-top: 1px solid #1f1f1f;
+    margin-top: 4px;
+  }
+  .history-ex:first-of-type { border-top: none; }
+  
+  .empty {
+    text-align: center;
+    color: #666;
+    padding: 40px 20px;
+    font-size: 14px;
+  }
+  
+  .chart-container {
+    position: relative;
+    height: 280px;
+    margin-top: 12px;
+  }
+  
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .stat-label { color: #888; }
+  .stat-value { font-weight: 600; }
+  
+  .hidden { display: none; }
+  
+  .session-banner {
+    background: linear-gradient(135deg, #ff4d4d22, #ff4d4d11);
+    border: 1px solid #ff4d4d44;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .day-btn {
+    aspect-ratio: 1;
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    color: #aaa;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .day-btn:active { transform: scale(0.95); }
+  .day-btn.active {
+    background: #ff4d4d;
+    color: white;
+    border-color: #ff4d4d;
+  }
+  .day-btn .day-num { font-size: 14px; line-height: 1; }
+  .day-btn .day-label {
+    font-size: 9px;
+    margin-top: 4px;
+    opacity: 0.85;
+    text-align: center;
+    line-height: 1.1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-break: break-word;
+  }
+  .day-btn .rest-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background: #444;
+    border-radius: 50%;
+  }
+  .day-btn.active .rest-dot { background: rgba(255,255,255,0.5); }
+  
+  .start-day-card {
+    background: linear-gradient(135deg, #ff4d4d22, #ff4d4d11);
+    border: 1px solid #ff4d4d44;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .start-day-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ff4d4d;
+    margin-bottom: 4px;
+  }
+  .start-day-ex-list {
+    font-size: 12px;
+    color: #aaa;
+    margin: 8px 0 12px 0;
+    line-height: 1.5;
+  }
+  
+  .schedule-day-card {
+    background: #0f0f0f;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .schedule-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .schedule-day-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+  .day-badge {
+    background: #ff4d4d;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+  .day-badge.rest { background: #444; }
+  .schedule-ex-chip {
+    display: inline-block;
+    background: #1f1f1f;
+    border: 1px solid #2a2a2a;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    margin: 2px;
+    color: #ccc;
+  }
+  .schedule-ex-chip .remove {
+    color: #666;
+    margin-left: 4px;
+    cursor: pointer;
+  }
+  .schedule-ex-chip .remove:hover { color: #ff4d4d; }
+  
+  .chart-svg { width: 100%; height: 100%; }
+  
+  .sync-indicator {
+    font-size: 11px;
+    color: #5dd860;
+    margin-left: 8px;
+  }
+  .sync-indicator.syncing { color: #ffaa00; }
+  .sync-indicator.error { color: #ff8080; }
+</style>
+</head>
+<body>
+
+<!-- Auth Screen -->
+<div id="auth-screen">
+  <div class="auth-logo">💪</div>
+  <div class="auth-title">Gym Tracker</div>
+  <div class="auth-subtitle">Theo dõi tiến độ tập luyện của bạn</div>
+  
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Đăng nhập</button>
+      <button class="auth-tab" data-tab="register">Đăng ký</button>
+    </div>
+    
+    <div id="error-msg" class="error-msg"></div>
+    
+    <!-- Login Form -->
+    <form id="login-form" class="auth-form active">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="login-email" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mật khẩu</label>
+        <input type="password" class="form-input" id="login-password" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn">Đăng nhập</button>
+    </form>
+    
+    <!-- Register Form -->
+    <form id="register-form" class="auth-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="register-email" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mật khẩu (tối thiểu 6 ký tự)</label>
+        <input type="password" class="form-input" id="register-password" required autocomplete="new-password" minlength="6">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Xác nhận mật khẩu</label>
+        <input type="password" class="form-input" id="register-password-confirm" required autocomplete="new-password" minlength="6">
+      </div>
+      <button type="submit" class="btn">Đăng ký</button>
+    </form>
+    
+    <div class="divider">hoặc</div>
+    <button class="btn btn-secondary" id="google-signin">
+      <span style="margin-right: 8px;">🔐</span> Đăng nhập với Google
+    </button>
+  </div>
+</div>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Đang tải dữ liệu...</div>
+</div>
+
+<!-- Main App -->
+<div id="app-screen">
+  <header>
+    <div class="header-left">
+      <h1>💪 Gym Tracker</h1>
+      <div class="subtitle">
+        <span id="user-email"></span>
+        <span class="sync-indicator" id="sync-status"></span>
+      </div>
+    </div>
+    <div class="user-badge" id="logout-btn">Đăng xuất</div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="workout">Tập</button>
+      <button class="tab" data-tab="schedule">Lịch</button>
+      <button class="tab" data-tab="exercises">Bài tập</button>
+      <button class="tab" data-tab="history">Lịch sử</button>
+      <button class="tab" data-tab="progress">Tiến độ</button>
+    </div>
+
+    <div id="tab-workout" class="tab-content">
+      <div id="session-status"></div>
+      <div id="workout-area"></div>
+    </div>
+
+    <div id="tab-schedule" class="tab-content hidden">
+      <div class="card">
+        <div class="card-title">Lịch tập 7 ngày</div>
+        <p style="color:#aaa; font-size:12px; margin-bottom:12px;">
+          Đặt tên cho từng Ngày (VD: "Ngực", "Lưng", "Chân") và gán bài tập.
+        </p>
+        <div id="schedule-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-exercises" class="tab-content hidden">
+      <div class="card">
+        <div class="card-title">Thêm bài tập mới</div>
+        <label>Tên bài tập</label>
+        <input type="text" id="new-ex-name" placeholder="VD: Bench Press">
+        <label>Nhóm cơ</label>
+        <input type="text" id="new-ex-muscle" placeholder="VD: Ngực, Vai trước, Tay sau">
+        <button class="btn btn-full" id="add-exercise-btn">+ Thêm bài tập</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Danh sách bài tập</div>
+        <div id="exercise-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-history" class="tab-content hidden">
+      <div class="card">
+        <div class="card-title">Lịch sử buổi tập</div>
+        <div id="history-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-progress" class="tab-content hidden">
+      <div class="card">
+        <div class="card-title">Tiến độ theo bài tập</div>
+        <label>Chọn bài tập</label>
+        <select id="progress-select"></select>
+        <div class="chart-container" id="chart-container"></div>
+        <div id="progress-stats" style="margin-top: 12px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="timer-box" id="timer-box">
+  <button class="timer-btn" id="timer-cancel">✕</button>
+  <div class="timer-display" id="timer-display">00:00</div>
+  <button class="timer-btn" id="timer-add">+15</button>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  // FIREBASE CONFIG - BẠN CẦN THAY THẾ BẰNG CONFIG CỦA PROJECT
+  // Hướng dẫn lấy config ở file README.md
+  const firebaseConfig = {
+  apiKey: "AIzaSyBkjT8y9s_9ieNvXtwQWEYFMGlE-aF87IM",
+  authDomain: "gym-tracker-haonam.firebaseapp.com",
+  projectId: "gym-tracker-haonam",
+  storageBucket: "gym-tracker-haonam.firebasestorage.app",
+  messagingSenderId: "1083266079244",
+  appId: "1:1083266079244:web:334cbffb8e87da24916c29",
+  measurementId: "G-EDR8SV8FQN"
+};
+
+  // Import Firebase
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+  import { 
+    getAuth, 
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup
+  } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+  import {
+    getFirestore,
+    collection,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    onSnapshot,
+    serverTimestamp,
+    query,
+    orderBy
+  } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const googleProvider = new GoogleAuthProvider();
+
+  // ============ GLOBAL STATE ============
+  let currentUser = null;
+  let state = {
+    exercises: [],
+    sessions: [],
+    currentSession: null,
+    schedule: Array(7).fill(null).map(() => ({ name: '', exerciseIds: [] }))
+  };
+  let timer = { interval: null, remaining: 0 };
+  let unsubscribeData = null;
+
+  // ============ AUTH UI ============
+  const authScreen = document.getElementById('auth-screen');
+  const loadingScreen = document.getElementById('loading-screen');
+  const appScreen = document.getElementById('app-screen');
+  const errorMsg = document.getElementById('error-msg');
+
+  // Auth tab switching
+  document.querySelectorAll('.auth-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.auth-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+      document.getElementById(btn.dataset.tab + '-form').classList.add('active');
+      hideError();
+    });
+  });
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('show');
+  }
+
+  function hideError() {
+    errorMsg.classList.remove('show');
+  }
+
+  // Login
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+      showError(getErrorMessage(error.code));
+    }
+  });
+
+  // Register
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const passwordConfirm = document.getElementById('register-password-confirm').value;
+    
+    if (password !== passwordConfirm) {
+      showError('Mật khẩu không khớp');
+      return;
+    }
+    
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Initialize empty user data
+      await initializeUserData(userCredential.user.uid);
+    } catch (error) {
+      showError(getErrorMessage(error.code));
+    }
+  });
+
+  // Google Sign In
+  document.getElementById('google-signin').addEventListener('click', async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      // Check if new user, initialize data
+      const userDoc = await getDoc(doc(db, 'users', result.user.uid));
+      if (!userDoc.exists()) {
+        await initializeUserData(result.user.uid);
+      }
+    } catch (error) {
+      showError(getErrorMessage(error.code));
+    }
+  });
+
+  // Logout
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    if (confirm('Đăng xuất?')) {
+      await signOut(auth);
+    }
+  });
+
+  function getErrorMessage(code) {
+    const messages = {
+      'auth/email-already-in-use': 'Email đã được sử dụng',
+      'auth/invalid-email': 'Email không hợp lệ',
+      'auth/weak-password': 'Mật khẩu quá yếu (tối thiểu 6 ký tự)',
+      'auth/user-not-found': 'Tài khoản không tồn tại',
+      'auth/wrong-password': 'Sai mật khẩu',
+      'auth/popup-closed-by-user': 'Đã hủy đăng nhập',
+      'auth/network-request-failed': 'Lỗi kết nối mạng'
+    };
+    return messages[code] || 'Đã xảy ra lỗi. Vui lòng thử lại.';
+  }
+
+  // ============ FIRESTORE INITIALIZATION ============
+  async function initializeUserData(uid) {
+    // Seed with Phase 3 data
+    const defaultData = {
+      exercises: [
+        {id:"ex_0001",name:"Decline JM press",muscle:"Tay sau"},
+        {id:"ex_0002",name:"High incline shoulder press",muscle:"Vai"},
+        {id:"ex_0003",name:"1 arm DB preacher curl",muscle:"Tay trước"},
+        {id:"ex_0004",name:"Incline triceps extension",muscle:"Tay sau"},
+        {id:"ex_0005",name:"Bayesian curl",muscle:"Tay trước"},
+        {id:"ex_0006",name:"Hammer curl",muscle:"Tay trước"},
+        {id:"ex_0007",name:"Calf smith press",muscle:"Bắp chân"},
+        {id:"ex_0008",name:"Leg curl",muscle:"Đùi sau"},
+        {id:"ex_0009",name:"Barbell stiff leg",muscle:"Đùi sau"},
+        {id:"ex_0010",name:"Smith high bar squat",muscle:"Đùi trước"},
+        {id:"ex_0011",name:"Cable lateral raise",muscle:"Vai"},
+        {id:"ex_0012",name:"Standing rear delt",muscle:"Vai sau"},
+        {id:"ex_0013",name:"Barbell bicep curl",muscle:"Tay trước"},
+        {id:"ex_0014",name:"T-bar row (dead stop)",muscle:"Lưng"},
+        {id:"ex_0015",name:"Close grip lat pull down",muscle:"Lưng"},
+        {id:"ex_0016",name:"Low incline chest press",muscle:"Ngực"},
+        {id:"ex_0017",name:"SA machine row",muscle:"Lưng"},
+        {id:"ex_0018",name:"Seated/standing calf press",muscle:"Bắp chân"},
+        {id:"ex_0019",name:"Pendulum/hack squat",muscle:"Đùi trước"},
+        {id:"ex_0020",name:"Heel elevated bulgarian smith squat",muscle:"Đùi trước"},
+        {id:"ex_0021",name:"Sissy squat",muscle:"Đùi trước"},
+        {id:"ex_0022",name:"Overhead triceps extension",muscle:"Tay sau"}
+      ],
+      sessions: [],
+      schedule: [
+        {name:"Arms+Shoulder",exerciseIds:["ex_0001","ex_0002","ex_0003","ex_0004","ex_0005","ex_0006"]},
+        {name:"Leg 1",exerciseIds:["ex_0007","ex_0008","ex_0009","ex_0010","ex_0011"]},
+        {name:"Upper 2",exerciseIds:["ex_0012","ex_0013","ex_0014","ex_0015","ex_0016","ex_0017"]},
+        {name:"Lower 2",exerciseIds:["ex_0018","ex_0019","ex_0020","ex_0021","ex_0022"]},
+        {name:"",exerciseIds:[]},
+        {name:"",exerciseIds:[]},
+        {name:"",exerciseIds:[]}
+      ],
+      currentSession: null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    await setDoc(doc(db, 'users', uid), defaultData);
+  }
+
+  // ============ AUTH STATE OBSERVER ============
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      authScreen.classList.add('hidden');
+      loadingScreen.classList.remove('hidden');
+      appScreen.classList.remove('active');
+      
+      document.getElementById('user-email').textContent = user.email;
+      
+      // Subscribe to realtime data
+      subscribeToUserData(user.uid);
+    } else {
+      currentUser = null;
+      if (unsubscribeData) unsubscribeData();
+      authScreen.classList.remove('hidden');
+      loadingScreen.classList.add('hidden');
+      appScreen.classList.remove('active');
+    }
+  });
+
+  // ============ REALTIME DATA SYNC ============
+  function subscribeToUserData(uid) {
+    const userRef = doc(db, 'users', uid);
+    
+    unsubscribeData = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        state.exercises = data.exercises || [];
+        state.sessions = data.sessions || [];
+        state.schedule = data.schedule || Array(7).fill(null).map(() => ({ name: '', exerciseIds: [] }));
+        state.currentSession = data.currentSession || null;
+        
+        // Update UI
+        renderAll();
+        
+        // Show app
+        loadingScreen.classList.add('hidden');
+        appScreen.classList.add('active');
+        
+        updateSyncStatus('synced');
+      }
+    }, (error) => {
+      console.error('Firestore error:', error);
+      updateSyncStatus('error');
+    });
+  }
+
+  function updateSyncStatus(status) {
+    const indicator = document.getElementById('sync-status');
+    if (status === 'synced') {
+      indicator.textContent = '✓ Đã đồng bộ';
+      indicator.className = 'sync-indicator';
+    } else if (status === 'syncing') {
+      indicator.textContent = '⟳ Đang lưu...';
+      indicator.className = 'sync-indicator syncing';
+    } else if (status === 'error') {
+      indicator.textContent = '✕ Lỗi đồng bộ';
+      indicator.className = 'sync-indicator error';
+    }
+  }
+
+  // Save to Firestore
+  async function saveToFirestore() {
+    if (!currentUser) return;
+    
+    updateSyncStatus('syncing');
+    
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        exercises: state.exercises,
+        sessions: state.sessions,
+        schedule: state.schedule,
+        currentSession: state.currentSession,
+        updatedAt: serverTimestamp()
+      });
+      updateSyncStatus('synced');
+    } catch (error) {
+      console.error('Save error:', error);
+      updateSyncStatus('error');
+    }
+  }
+
+  // ============ APP LOGIC (same as before, but saves to Firestore) ============
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('vi-VN', { weekday:'short', day:'2-digit', month:'2-digit', year:'numeric' });
+  }
+  function fmtDateShort(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit' });
+  }
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function getExerciseById(id) { return state.exercises.find(e => e.id === id); }
+
+  // Render all views
+  function renderAll() {
+    renderWorkout();
+    renderExercises();
+    renderSchedule();
+    renderHistory();
+    renderProgress();
+  }
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById('tab-' + btn.dataset.tab).classList.remove('hidden');
+      if (btn.dataset.tab === 'exercises') renderExercises();
+      if (btn.dataset.tab === 'schedule') renderSchedule();
+      if (btn.dataset.tab === 'history') renderHistory();
+      if (btn.dataset.tab === 'progress') renderProgress();
+      if (btn.dataset.tab === 'workout') renderWorkout();
+    });
+  });
+
+  // ... (Copy toàn bộ logic từ file gym_tracker_v2.html: exercises, schedule, workout, history, progress, timer)
+  // Chỉ cần thay thế mọi lời gọi save() bằng saveToFirestore()
+  
+  // Make functions global for onclick handlers
+  window.deleteExercise = async (id) => {
+    if (!confirm('Xóa bài tập này?')) return;
+    state.exercises = state.exercises.filter(e => e.id !== id);
+    state.schedule.forEach(day => {
+      day.exerciseIds = day.exerciseIds.filter(eid => eid !== id);
+    });
+    await saveToFirestore();
+  };
+
+  window.updateDayName = async (idx, value) => {
+    state.schedule[idx].name = value.trim();
+    await saveToFirestore();
+  };
+
+  window.addExToDay = async (idx) => {
+    const sel = document.getElementById('add-ex-day-' + idx);
+    const exId = sel.value;
+    if (!exId) return;
+    if (!state.schedule[idx].exerciseIds.includes(exId)) {
+      state.schedule[idx].exerciseIds.push(exId);
+      await saveToFirestore();
+      renderSchedule();
+    }
+  };
+
+  window.removeExFromDay = async (idx, exId) => {
+    state.schedule[idx].exerciseIds = state.schedule[idx].exerciseIds.filter(id => id !== exId);
+    await saveToFirestore();
+    renderSchedule();
+  };
+
+  window.startSession = async (dayIndex) => {
+    const session = {
+      id: uid(),
+      date: Date.now(),
+      dayIndex: dayIndex,
+      exercises: []
+    };
+
+    if (dayIndex != null) {
+      const day = state.schedule[dayIndex];
+      day.exerciseIds.forEach(eid => {
+        const ex = getExerciseById(eid);
+        if (ex) {
+          session.exercises.push({
+            exerciseId: ex.id,
+            name: ex.name,
+            sets: [{ reps: '', weight: '' }]
+          });
+        }
+      });
+    }
+
+    state.currentSession = session;
+    await saveToFirestore();
+    selectedDay = null;
+  };
+
+  window.addExerciseToSession = async () => {
+    const id = document.getElementById('add-to-session').value;
+    const ex = getExerciseById(id);
+    if (!ex) return;
+    state.currentSession.exercises.push({
+      exerciseId: ex.id,
+      name: ex.name,
+      sets: [{ reps: '', weight: '' }]
+    });
+    await saveToFirestore();
+  };
+
+  window.removeSessionExercise = async (idx) => {
+    state.currentSession.exercises.splice(idx, 1);
+    await saveToFirestore();
+  };
+
+  window.addSet = async (exIdx) => {
+    const sets = state.currentSession.exercises[exIdx].sets;
+    const last = sets[sets.length - 1];
+    sets.push({ reps: last?.reps || '', weight: last?.weight || '' });
+    await saveToFirestore();
+  };
+
+  window.removeSet = async (exIdx, setIdx) => {
+    state.currentSession.exercises[exIdx].sets.splice(setIdx, 1);
+    if (state.currentSession.exercises[exIdx].sets.length === 0) {
+      state.currentSession.exercises[exIdx].sets.push({ reps: '', weight: '' });
+    }
+    await saveToFirestore();
+  };
+
+  window.updateSet = async (exIdx, setIdx, field, value) => {
+    state.currentSession.exercises[exIdx].sets[setIdx][field] = value;
+    await saveToFirestore();
+  };
+
+  window.finishSession = async () => {
+    const s = state.currentSession;
+    s.exercises = s.exercises.map(ex => ({
+      ...ex,
+      sets: ex.sets.filter(set => set.reps && set.weight)
+    })).filter(ex => ex.sets.length > 0);
+
+    if (s.exercises.length === 0) {
+      if (!confirm('Buổi tập trống. Vẫn kết thúc và xóa?')) return;
+      state.currentSession = null;
+      await saveToFirestore();
+      return;
+    }
+
+    state.sessions.unshift(s);
+    state.currentSession = null;
+    await saveToFirestore();
+    alert('Đã lưu buổi tập! 💪');
+  };
+
+  window.deleteSession = async (id) => {
+    if (!confirm('Xóa buổi tập này?')) return;
+    state.sessions = state.sessions.filter(s => s.id !== id);
+    await saveToFirestore();
+  };
+
+  let selectedDay = null;
+  window.selectDay = (idx) => {
+    if (selectedDay === idx) {
+      selectedDay = null;
+      document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('day-detail').innerHTML = '';
+      return;
+    }
+    selectedDay = idx;
+    document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('day-btn-' + idx).classList.add('active');
+
+    const day = state.schedule[idx];
+    const isRest = !day.name.trim() && day.exerciseIds.length === 0;
+    const detail = document.getElementById('day-detail');
+
+    if (isRest) {
+      detail.innerHTML = `
+        <div class="start-day-card" style="margin-top:12px;">
+          <div class="start-day-name">Ngày ${idx + 1} — Nghỉ</div>
+          <div class="start-day-ex-list">Ngày này chưa được setup. Vào tab "Lịch" để thêm bài tập.</div>
+          <button class="btn btn-full" onclick="startSession(${idx})">▶ Vẫn bắt đầu (trống)</button>
+        </div>
+      `;
+      return;
+    }
+
+    const exNames = day.exerciseIds
+      .map(eid => getExerciseById(eid))
+      .filter(e => e)
+      .map(e => '• ' + escapeHtml(e.name) + (e.muscle ? ' <span style="color:#666;">— ' + escapeHtml(e.muscle) + '</span>' : ''))
+      .join('<br>');
+
+    detail.innerHTML = `
+      <div class="start-day-card" style="margin-top:12px;">
+        <div class="start-day-name">Ngày ${idx + 1}${day.name ? ' — ' + escapeHtml(day.name) : ''}</div>
+        <div class="start-day-ex-list">${exNames || 'Chưa có bài tập trong ngày này.'}</div>
+        <button class="btn btn-full" onclick="startSession(${idx})">▶ Bắt đầu buổi tập</button>
+      </div>
+    `;
+  };
+
+  // Timer
+  window.startTimer = (seconds) => {
+    clearInterval(timer.interval);
+    timer.remaining = seconds;
+    const box = document.getElementById('timer-box');
+    box.classList.add('active');
+    updateTimerDisplay();
+    timer.interval = setInterval(() => {
+      timer.remaining--;
+      updateTimerDisplay();
+      if (timer.remaining <= 0) {
+        clearInterval(timer.interval);
+        box.classList.remove('active');
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const beep = (delay) => {
+            setTimeout(() => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.frequency.value = 880;
+              gain.gain.setValueAtTime(0.3, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+              osc.start(); osc.stop(ctx.currentTime + 0.5);
+            }, delay);
+          };
+          beep(0); beep(300);
+        } catch(e){}
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+    }, 1000);
+  };
+
+  function updateTimerDisplay() {
+    const m = Math.floor(timer.remaining / 60);
+    const s = timer.remaining % 60;
+    document.getElementById('timer-display').textContent =
+      `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  document.getElementById('timer-cancel').addEventListener('click', () => {
+    clearInterval(timer.interval);
+    document.getElementById('timer-box').classList.remove('active');
+  });
+  document.getElementById('timer-add').addEventListener('click', () => {
+    timer.remaining += 15;
+    updateTimerDisplay();
+  });
+
+  // Add exercise
+  document.getElementById('add-exercise-btn').addEventListener('click', async () => {
+    const name = document.getElementById('new-ex-name').value.trim();
+    const muscle = document.getElementById('new-ex-muscle').value.trim();
+    if (!name) { alert('Nhập tên bài tập'); return; }
+    state.exercises.push({ id: uid(), name, muscle });
+    await saveToFirestore();
+    document.getElementById('new-ex-name').value = '';
+    document.getElementById('new-ex-muscle').value = '';
+  });
+
+  // Render functions (simplified - copy full logic from v2)
+  function renderWorkout() {
+    const statusDiv = document.getElementById('session-status');
+    const area = document.getElementById('workout-area');
+
+    if (!state.currentSession) {
+      statusDiv.innerHTML = '';
+      const hasAnyDay = state.schedule.some(d => d.exerciseIds.length > 0);
+
+      if (state.exercises.length === 0) {
+        area.innerHTML = `
+          <div class="card">
+            <div class="card-title">Bắt đầu</div>
+            <p style="color:#aaa; margin-bottom:12px; font-size:14px;">
+              Bạn cần tạo bài tập và setup lịch trước.
+            </p>
+            <button class="btn btn-full" onclick="document.querySelector('[data-tab=exercises]').click()">
+              1. Tạo bài tập
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      let dayPickerHtml = `
+        <div class="card">
+          <div class="card-title">Chọn ngày tập hôm nay</div>
+          <div class="day-grid">
+            ${state.schedule.map((day, idx) => {
+              const isRest = !day.name.trim() && day.exerciseIds.length === 0;
+              return `
+                <button class="day-btn" onclick="selectDay(${idx})" id="day-btn-${idx}">
+                  <div class="day-num">N${idx + 1}</div>
+                  <div class="day-label">${isRest ? 'Nghỉ' : escapeHtml(day.name || '?')}</div>
+                  ${isRest ? '<div class="rest-dot"></div>' : ''}
+                </button>
+              `;
+            }).join('')}
+          </div>
+          <div id="day-detail"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="font-size: 14px;">⏱ Timer nghỉ nhanh</div>
+          <div class="timer-quick">
+            <button onclick="startTimer(60)">60s</button>
+            <button onclick="startTimer(90)">90s</button>
+            <button onclick="startTimer(120)">2 phút</button>
+            <button onclick="startTimer(180)">3 phút</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="font-size: 14px;">Tập tự do</div>
+          <button class="btn btn-secondary btn-full" onclick="startSession(null)">▶ Buổi tập trống</button>
+        </div>
+      `;
+
+      area.innerHTML = dayPickerHtml;
+      return;
+    }
+
+    // Active session
+    const s = state.currentSession;
+    const dayLabel = s.dayIndex != null
+      ? `Ngày ${s.dayIndex + 1}${state.schedule[s.dayIndex].name ? ' • ' + escapeHtml(state.schedule[s.dayIndex].name) : ''}`
+      : 'Tập tự do';
+
+    statusDiv.innerHTML = `
+      <div class="session-banner">
+        <div>🔥 ${dayLabel} • ${fmtDate(s.date)}</div>
+        <button class="btn btn-small" onclick="finishSession()">Kết thúc</button>
+      </div>
+    `;
+
+    const availableExercises = state.exercises.filter(ex =>
+      !s.exercises.some(se => se.exerciseId === ex.id)
+    );
+
+    let html = '';
+
+    s.exercises.forEach((sessEx, exIdx) => {
+      html += `
+        <div class="card">
+          <div class="exercise-header">
+            <div>
+              <div class="exercise-name">${escapeHtml(sessEx.name)}</div>
+            </div>
+            <button class="btn btn-small btn-danger" onclick="removeSessionExercise(${exIdx})">✕</button>
+          </div>
+          <div style="margin: 8px 0;">
+            <div class="set-row" style="font-size: 11px; color: #888; margin-bottom: 4px;">
+              <div></div>
+              <div style="text-align:center;">Reps</div>
+              <div style="text-align:center;">Kg</div>
+              <div></div>
+            </div>
+            ${sessEx.sets.map((set, setIdx) => `
+              <div class="set-row">
+                <div class="set-num">${setIdx + 1}</div>
+                <input type="number" inputmode="numeric" value="${set.reps || ''}" placeholder="0"
+                  onchange="updateSet(${exIdx}, ${setIdx}, 'reps', this.value)">
+                <input type="number" inputmode="decimal" step="0.5" value="${set.weight || ''}" placeholder="0"
+                  onchange="updateSet(${exIdx}, ${setIdx}, 'weight', this.value)">
+                <button class="remove-set" onclick="removeSet(${exIdx}, ${setIdx})">×</button>
+              </div>
+            `).join('')}
+            <button class="btn btn-secondary btn-small btn-full" style="margin-top: 6px;" onclick="addSet(${exIdx})">+ Thêm set</button>
+          </div>
+          <div class="timer-quick">
+            <span style="font-size:12px; color:#888; align-self:center; margin-right:4px;">Nghỉ:</span>
+            <button onclick="startTimer(60)">60s</button>
+            <button onclick="startTimer(90)">90s</button>
+            <button onclick="startTimer(120)">2'</button>
+            <button onclick="startTimer(180)">3'</button>
+          </div>
+        </div>
+      `;
+    });
+
+    if (availableExercises.length > 0) {
+      html += `
+        <div class="card">
+          <div class="card-title">+ Thêm bài tập</div>
+          <select id="add-to-session">
+            ${availableExercises.map(ex => `<option value="${ex.id}">${escapeHtml(ex.name)}${ex.muscle ? ' — ' + escapeHtml(ex.muscle) : ''}</option>`).join('')}
+          </select>
+          <button class="btn btn-full" onclick="addExerciseToSession()">Thêm</button>
+        </div>
+      `;
+    }
+
+    area.innerHTML = html;
+  }
+
+  function renderExercises() {
+    const list = document.getElementById('exercise-list');
+    if (state.exercises.length === 0) {
+      list.innerHTML = '<div class="empty">Chưa có bài tập nào.</div>';
+      return;
+    }
+    list.innerHTML = state.exercises.map(ex => `
+      <div class="exercise-item">
+        <div class="exercise-header">
+          <div>
+            <div class="exercise-name">${escapeHtml(ex.name)}</div>
+            ${ex.muscle ? `<span class="muscle-tag">${escapeHtml(ex.muscle)}</span>` : ''}
+          </div>
+          <button class="btn btn-small btn-danger" onclick="deleteExercise('${ex.id}')">Xóa</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderSchedule() {
+    const list = document.getElementById('schedule-list');
+    list.innerHTML = state.schedule.map((day, idx) => {
+      const isRest = !day.name.trim() && day.exerciseIds.length === 0;
+      const exChips = day.exerciseIds.map(eid => {
+        const ex = getExerciseById(eid);
+        if (!ex) return '';
+        return `<span class="schedule-ex-chip">${escapeHtml(ex.name)}<span class="remove" onclick="removeExFromDay(${idx}, '${eid}')">✕</span></span>`;
+      }).join('');
+
+      const availableEx = state.exercises.filter(ex => !day.exerciseIds.includes(ex.id));
+
+      return `
+        <div class="schedule-day-card">
+          <div class="schedule-day-header">
+            <div class="schedule-day-title">
+              <div class="day-badge ${isRest ? 'rest' : ''}">${idx + 1}</div>
+              <input type="text" placeholder="${isRest ? 'Ngày nghỉ' : 'Tên ngày'}"
+                value="${escapeHtml(day.name)}"
+                onchange="updateDayName(${idx}, this.value)"
+                style="margin-bottom: 0; flex: 1;">
+            </div>
+          </div>
+          <div style="margin: 8px 0; min-height: 24px;">
+            ${exChips || '<span style="color:#666; font-size:12px;">Chưa có bài tập</span>'}
+          </div>
+          ${state.exercises.length > 0 ? `
+            <div style="display:flex; gap:6px; margin-top:8px;">
+              <select id="add-ex-day-${idx}" style="margin-bottom: 0; flex: 1;">
+                ${availableEx.length > 0
+                  ? availableEx.map(ex => `<option value="${ex.id}">${escapeHtml(ex.name)}</option>`).join('')
+                  : '<option value="">Đã thêm hết</option>'}
+              </select>
+              <button class="btn btn-small" onclick="addExToDay(${idx})" ${availableEx.length === 0 ? 'disabled' : ''}>+</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('history-list');
+    if (state.sessions.length === 0) {
+      list.innerHTML = '<div class="empty">Chưa có buổi tập nào.</div>';
+      return;
+    }
+    list.innerHTML = state.sessions.map(s => {
+      const dayLabel = s.dayIndex != null
+        ? `Ngày ${s.dayIndex + 1}${state.schedule[s.dayIndex]?.name ? ' • ' + escapeHtml(state.schedule[s.dayIndex].name) : ''}`
+        : 'Tự do';
+      return `
+        <div class="history-item">
+          <div class="exercise-header">
+            <div>
+              <div class="history-date">${fmtDate(s.date)}</div>
+              <div style="font-size:11px; color:#888;">${dayLabel}</div>
+            </div>
+            <button class="btn btn-small btn-danger" onclick="deleteSession('${s.id}')">Xóa</button>
+          </div>
+          ${s.exercises.map(ex => `
+            <div class="history-ex">
+              <strong>${escapeHtml(ex.name)}</strong><br>
+              <span style="color:#888; font-size:12px;">
+                ${ex.sets.map(set => `${set.reps}×${set.weight}kg`).join(' • ')}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderProgress() {
+    const select = document.getElementById('progress-select');
+    if (state.exercises.length === 0) {
+      select.innerHTML = '<option>Chưa có bài tập</option>';
+      document.getElementById('progress-stats').innerHTML = '<div class="empty">Tạo bài tập để xem tiến độ.</div>';
+      document.getElementById('chart-container').innerHTML = '';
+      return;
+    }
+    const currentVal = select.value;
+    select.innerHTML = state.exercises.map(ex =>
+      `<option value="${ex.id}">${escapeHtml(ex.name)}</option>`
+    ).join('');
+    if (currentVal && state.exercises.some(e => e.id === currentVal)) {
+      select.value = currentVal;
+    }
+    select.onchange = () => drawChart(select.value);
+    drawChart(select.value);
+  }
+
+  function drawChart(exerciseId) {
+    const points = [];
+    [...state.sessions].reverse().forEach(s => {
+      s.exercises.forEach(ex => {
+        if (ex.exerciseId === exerciseId) {
+          const maxWeight = Math.max(...ex.sets.map(set => parseFloat(set.weight) || 0));
+          const totalVolume = ex.sets.reduce((sum, set) =>
+            sum + (parseFloat(set.weight) || 0) * (parseFloat(set.reps) || 0), 0);
+          points.push({ date: s.date, maxWeight, totalVolume, sets: ex.sets });
+        }
+      });
+    });
+
+    const statsDiv = document.getElementById('progress-stats');
+    const chartDiv = document.getElementById('chart-container');
+
+    if (points.length === 0) {
+      statsDiv.innerHTML = '<div class="empty">Chưa có dữ liệu.</div>';
+      chartDiv.innerHTML = '';
+      return;
+    }
+
+    const allMax = points.map(p => p.maxWeight);
+    const peakWeight = Math.max(...allMax);
+    const firstWeight = allMax[0];
+    const lastWeight = allMax[allMax.length - 1];
+    const change = lastWeight - firstWeight;
+
+    statsDiv.innerHTML = `
+      <div class="stat-row"><span class="stat-label">Số buổi:</span><span class="stat-value">${points.length}</span></div>
+      <div class="stat-row"><span class="stat-label">Peak:</span><span class="stat-value">${peakWeight} kg</span></div>
+      <div class="stat-row"><span class="stat-label">Gần nhất:</span><span class="stat-value">${lastWeight} kg</span></div>
+      <div class="stat-row"><span class="stat-label">Tăng:</span><span class="stat-value" style="color:${change >= 0 ? '#5dd860' : '#ff8080'}">${change >= 0 ? '+' : ''}${change.toFixed(1)} kg</span></div>
+    `;
+
+    drawSvgChart(chartDiv, points);
+  }
+
+  function drawSvgChart(container, points) {
+    const w = container.clientWidth || 600;
+    const h = 280;
+    const pad = { l: 40, r: 16, t: 16, b: 40 };
+    const cw = w - pad.l - pad.r;
+    const ch = h - pad.t - pad.b;
+
+    const weights = points.map(p => p.maxWeight);
+    const minW = Math.min(...weights);
+    const maxW = Math.max(...weights);
+    const range = maxW - minW || 1;
+    const yMin = Math.max(0, minW - range * 0.2);
+    const yMax = maxW + range * 0.2;
+
+    const xStep = points.length > 1 ? cw / (points.length - 1) : cw / 2;
+    const xPos = i => pad.l + (points.length > 1 ? i * xStep : cw / 2);
+    const yPos = v => pad.t + ch - ((v - yMin) / (yMax - yMin)) * ch;
+
+    const yTicks = 4;
+    let yAxis = '';
+    for (let i = 0; i <= yTicks; i++) {
+      const v = yMin + ((yMax - yMin) * i / yTicks);
+      const y = yPos(v);
+      yAxis += `<line x1="${pad.l}" y1="${y}" x2="${w - pad.r}" y2="${y}" stroke="#222" stroke-width="1"/>`;
+      yAxis += `<text x="${pad.l - 6}" y="${y + 4}" fill="#888" font-size="10" text-anchor="end">${v.toFixed(0)}</text>`;
+    }
+
+    let xAxis = '';
+    const labelStep = Math.max(1, Math.ceil(points.length / 6));
+    points.forEach((p, i) => {
+      if (i % labelStep === 0 || i === points.length - 1) {
+        const x = xPos(i);
+        xAxis += `<text x="${x}" y="${h - pad.b + 16}" fill="#888" font-size="10" text-anchor="middle">${fmtDateShort(p.date)}</text>`;
+      }
+    });
+
+    const pathD = points.map((p, i) =>
+      `${i === 0 ? 'M' : 'L'} ${xPos(i)} ${yPos(p.maxWeight)}`
+    ).join(' ');
+
+    const areaD = pathD + ` L ${xPos(points.length - 1)} ${pad.t + ch} L ${xPos(0)} ${pad.t + ch} Z`;
+
+    let dots = '';
+    points.forEach((p, i) => {
+      dots += `<circle cx="${xPos(i)}" cy="${yPos(p.maxWeight)}" r="5" fill="#ff4d4d" stroke="#0a0a0a" stroke-width="2">
+        <title>${fmtDateShort(p.date)} — ${p.maxWeight}kg</title>
+      </circle>`;
+    });
+
+    container.innerHTML = `
+      <svg class="chart-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        ${yAxis}
+        <path d="${areaD}" fill="rgba(255,77,77,0.15)"/>
+        <path d="${pathD}" fill="none" stroke="#ff4d4d" stroke-width="2.5" stroke-linejoin="round"/>
+        ${dots}
+        ${xAxis}
+      </svg>
+    `;
+  }
+
+  window.addEventListener('beforeunload', (e) => {
+    if (state.currentSession && state.currentSession.exercises.length > 0) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+</script>
+
+</body>
+</html>
